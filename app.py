@@ -82,6 +82,20 @@ def _domain_from_L(K, sigma, T, L):
     xmax = math.log(K) + L * sigma * math.sqrt(T)
     return xmin, xmax
 
+def _estimate_M_for_C(T, sigma, L, N, C):
+    """Estimación rápida de M a partir de C (coherente con ΔZ = C·√Δt).
+    width_x = xmax - xmin = 2*L*sigma*sqrt(T)
+    dx = C*sqrt(dt) = C*sqrt(T/N)
+    M ≈ ceil(width_x / dx)
+    """
+    if T <= 0 or N <= 0 or C <= 0 or sigma <= 0 or L <= 0:
+        return math.inf
+    width_x = 2.0 * L * sigma * math.sqrt(T)
+    dx = C * math.sqrt(T / N) * sigma
+    if dx <= 0:
+        return math.inf
+    return int(math.ceil(width_x / dx))
+
 def _bc_arrays_full(is_call, american, K, r, q, Smin, Smax, tau_vec):
     if is_call:
         left = np.zeros_like(tau_vec)
@@ -222,8 +236,25 @@ def run_experiment(K, T, r, sigma, q, S0, is_call, american, N, C_values, method
     }
 
     for C in C_values:
-        dx = C * math.sqrt(dt)
+        dx = C * sigma *  math.sqrt(dt)
         M = int(math.ceil((xmax - xmin) / dx))
+
+        # Rechazo suave: si M*N supera 1e6, marcamos NaN y continuamos
+        if M * N > 50_000_000:
+            if 'Explícito' in methods:
+                results['explicit']['price'].append(np.nan)
+                results['explicit']['time'].append(np.nan)
+            if 'Implícito (Proyección)' in methods:
+                results['implicit_proj']['price'].append(np.nan)
+                results['implicit_proj']['time'].append(np.nan)
+            if 'Implícito (PSOR)' in methods:
+                results['implicit_psor']['price'].append(np.nan)
+                results['implicit_psor']['time'].append(np.nan)
+            if 'BS Europeo' in methods:
+                price_bs = black_scholes_european(S0, K, T, r, sigma, q, is_call)
+                results['bs_european']['price'].append(price_bs)
+                results['bs_european']['time'].append(np.nan)
+            continue
 
         if 'Explícito' in methods:
             try:
@@ -417,16 +448,16 @@ if page == "Ejemplos":
 
     examples = {
         # Base y variaciones a partir del base
-        "base": dict(title="Base (Put Americano)", K=100.0, T=1.0, r=0.05, sigma=0.20, q=0.01, S0=100.0,
-                      is_call=False, american=True, N=1000, C_values=[0.05, 0.1, 0.25, 0.5, 1.0]),
-        "base_n100": dict(title="Base variando N=100", K=100.0, T=1.0, r=0.05, sigma=0.20, q=0.01, S0=100.0,
-                           is_call=False, american=True, N=100, C_values=[0.05, 0.1, 0.25, 0.5, 1.0]),
-        "base_n10000": dict(title="Base N=10000", K=100.0, T=1.0, r=0.05, sigma=0.20, q=0.01, S0=100.0,
-                                is_call=False, american=True, N=10000, C_values=[0.1, 0.25, 0.5, 1.0, 2.0]),
-        "base_s0_120": dict(title="Base variando S0=120", K=100.0, T=1.0, r=0.05, sigma=0.20, q=0.01, S0=120.0,
-                             is_call=False, american=True, N=1000, C_values=[0.05, 0.1, 0.25, 0.5, 1.0]),
-        "base_sigma_035": dict(title="Base variando σ=0.35", K=100.0, T=1.0, r=0.05, sigma=0.35, q=0.01, S0=100.0,
-                                is_call=False, american=True, N=1000, C_values=[0.05, 0.1, 0.25, 0.5, 1.0]),
+        "base": dict(title="Base (Put Americano)", K=100.0, T=1.0, r=0.05, sigma=0.30, q=0.01, S0=100.0,
+                      is_call=False, american=True, N=1000, C_values=[0.1, 0.25, 0.5, 1.0, 3**(1/2), 2.0, 3.0]),
+        "base_n100": dict(title="Base variando N=100", K=100.0, T=1.0, r=0.05, sigma=0.30, q=0.01, S0=100.0,
+                           is_call=False, american=True, N=100, C_values=[0.1, 0.25, 0.5, 1.0, 3**(1/2), 2.0, 3.0]),
+        "base_n10000": dict(title="Base N=10000", K=100.0, T=1.0, r=0.05, sigma=0.30, q=0.01, S0=100.0,
+                                is_call=False, american=True, N=10000, C_values=[0.25, 0.5, 1.0, 3**(1/2), 2.0, 3.0]),
+        "base_s0_120": dict(title="Base variando S0=120", K=100.0, T=1.0, r=0.05, sigma=0.30, q=0.01, S0=120.0,
+                             is_call=False, american=True, N=1000, C_values=[0.1, 0.25, 0.5, 1.0, 3**(1/2), 2.0, 3.0]),
+        "base_sigma_035": dict(title="Base variando σ=0.35", K=100.0, T=1.0, r=0.05, sigma=0.5, q=0.01, S0=100.0,
+                                is_call=False, american=True, N=1000, C_values=[0.1, 0.25, 0.5, 1.0, 3**(1/2), 2.0, 3.0]),
     }
 
     def image_paths(slug):
@@ -447,7 +478,7 @@ if page == "Ejemplos":
                     p['K'], p['T'], p['r'], p['sigma'], p['q'], p['S0'],
                     p['is_call'], p['american'], p['N'], tuple(p['C_values']), tuple(default_methods)
                 )
-                xlabel = 'Relación C (ΔZ = C · √Δt)'
+                xlabel = 'Relación C (ΔZ = C · σ · √Δt)'
                 fig1, fig2, fig3 = build_separate_figures(results, ref, xlabel)
                 fig1.savefig(p_price, dpi=150)
                 plt.close(fig1)
@@ -487,7 +518,7 @@ else:
         q = st.number_input("Dividendo continuo q", value=0.01, min_value=0.0, max_value=1.0, step=0.01, format="%.4f")
     with colB:
         S0 = st.number_input("Spot S0", value=105.0, min_value=0.01, step=1.0)
-        sigma = st.number_input("Volatilidad σ", value=0.20, min_value=0.0001, max_value=5.0, step=0.01, format="%.4f")
+        sigma = st.number_input("Volatilidad σ", value=0.3, min_value=0.0001, max_value=5.0, step=0.01, format="%.4f")
         T = st.number_input("Tiempo a vencimiento T (años)", value=1.0, min_value=0.001, max_value=10.0, step=0.1)
     with colC:
         style = st.selectbox("Tipo", ["Put Americano", "Call Americano", "Put Europeo", "Call Europeo"])
@@ -508,7 +539,19 @@ else:
     c_list = sorted(set([round(float(c), 4) for c in c_list]))
     st.write("C evaluados:", c_list)
 
+    # Validación anticipada M*N <= 1e6
+    invalid = []
+    for C in c_list:
+        M_est = _estimate_M_for_C(T, float(sigma), 6.0, int(N), float(C))
+        if M_est == math.inf or M_est * int(N) > 50_000_000:
+            invalid.append((C, M_est))
+    if invalid:
+        msg_lines = [f"- C={c}: M≈{(m if m!=math.inf else '∞')} → M*N>50_000_000" for c, m in invalid]
+        st.error("Las opciones elegidas exceden el límite de malla (M*N ≤ 10.000.000). Ajustá N o aumentá C.\n" + "\n".join(msg_lines))
+
     if st.button("Calcular con mis parámetros"):
+        if invalid:
+            st.stop()
         with st.spinner("Calculando…"):
             results, ref = run_experiment(
                 K, T, r, sigma, q, S0, is_call, american, int(N), tuple(c_list), METHODS_DEFAULT
