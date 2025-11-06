@@ -518,22 +518,22 @@ else:
         q = st.number_input("Dividendo continuo q", value=0.01, min_value=0.0, max_value=1.0, step=0.01, format="%.4f")
     with colB:
         S0 = st.number_input("Spot S0", value=105.0, min_value=0.01, step=1.0)
-        sigma = st.number_input("Volatilidad σ", value=0.5, min_value=0.0001, max_value=5.0, step=0.01, format="%.4f")
+        sigma = st.number_input("Volatilidad σ", value=0.5, min_value=0.30, max_value=5.0, step=0.01, format="%.4f")
         T = st.number_input("Tiempo a vencimiento T (años)", value=1.0, min_value=0.001, max_value=10.0, step=0.1)
     with colC:
         style = st.selectbox("Tipo", ["Put Americano", "Call Americano", "Put Europeo", "Call Europeo"])
         is_call = "Call" in style
         american = "Americano" in style
-        N = st.number_input("N (pasos temporales)", value=800, min_value=50, max_value=5000, step=50)
+        N = st.number_input("N (pasos temporales)", value=200, min_value=50, max_value=300, step=10)
 
     st.markdown("#### Valores de C (ΔZ / √Δt)")
     c1, c2 = st.columns(2)
     with c1:
-        c_min = st.number_input("C mínimo", value=0.25, min_value=0.005, step=0.005, format="%.3f")
-        c_mid = st.number_input("C intermedio", value=0.5, min_value=0.005, step=0.005, format="%.3f")
+        c_min = st.number_input("C mínimo", value=0.5, min_value=0.5, step=0.025, format="%.3f")
+        c_mid = st.number_input("C intermedio", value=1.0, min_value=0.5, step=0.025, format="%.3f")
     with c2:
-        c_mid2 = st.number_input("C intermedio 2", value=1.0, min_value=0.005, step=0.005, format="%.3f")
-        c_max = st.number_input("C máximo", value=2.0, min_value=0.005, step=0.005, format="%.3f")
+        c_mid2 = st.number_input("C intermedio 2", value=3**(1/2), min_value=0.5, step=0.025, format="%.3f")
+        c_max = st.number_input("C máximo", value=2.0, min_value=0.5, step=0.025, format="%.3f")
 
     c_list = [c_min, c_mid, c_mid2, c_max]
     c_list = sorted(set([round(float(c), 4) for c in c_list]))
