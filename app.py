@@ -428,7 +428,7 @@ def build_separate_figures(results, reference_price, xlabel_text):
 # UI
 # =====================
 st.title("Dashboard de Precios de Opciones (FD)")
-st.caption("Explorá métodos Explícito e Implícito (Proyección/PSOR) y comparalos con BS Europeo y referencia QuantLib si está disponible.")
+st.caption("Los parámetros están limitados por la capacidad de cómputo del entorno Streamlit gratuito.")
 
 with st.sidebar:
     st.header("Modo")
