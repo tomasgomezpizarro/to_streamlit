@@ -529,13 +529,13 @@ else:
     st.markdown("#### Valores de C (ΔZ / √Δt)")
     c1, c2 = st.columns(2)
     with c1:
-        c_min = st.number_input("C mínimo", value=0.1, min_value=0.005, step=0.005, format="%.3f")
-        c_mid = st.number_input("C intermedio", value=0.25, min_value=0.005, step=0.005, format="%.3f")
+        c_min = st.number_input("C mínimo", value=0.25, min_value=0.005, step=0.005, format="%.3f")
+        c_mid = st.number_input("C intermedio", value=0.5, min_value=0.005, step=0.005, format="%.3f")
     with c2:
-        c_mid2 = st.number_input("C intermedio 2", value=0.5, min_value=0.005, step=0.005, format="%.3f")
-        c_max = st.number_input("C máximo", value=1.0, min_value=0.005, step=0.005, format="%.3f")
+        c_mid2 = st.number_input("C intermedio 2", value=1.0, min_value=0.005, step=0.005, format="%.3f")
+        c_max = st.number_input("C máximo", value=2.0, min_value=0.005, step=0.005, format="%.3f")
 
-    c_list = [c_min, 0.1, c_mid, c_mid2, c_max]
+    c_list = [c_min, c_mid, c_mid2, c_max]
     c_list = sorted(set([round(float(c), 4) for c in c_list]))
     st.write("C evaluados:", c_list)
 
